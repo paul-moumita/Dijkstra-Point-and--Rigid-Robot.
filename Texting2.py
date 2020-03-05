@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import *
 import numpy as np
+from collections import deque, namedtuple
 from ExplorePoint import ToExplore
 
 '''
@@ -22,13 +23,10 @@ window = tk.Tk()
 
 
 
-##Now we will assign a default distance to the nodes we have in the frame##
-
-inf = float('inf')
-Border = namedtuple('Border', 'initial, final, cost')
-
 '''
 ##--------------------------------------------------------------------------------------##
 ##Functions will be defined here##
 ##--------------------------------------------------------------------------------------##
 '''
+
+window.mainloop()
