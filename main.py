@@ -1,3 +1,4 @@
+
 import tkinter as tk
 from tkinter import *
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -5,270 +6,42 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 from collections import deque, namedtuple
+import sys
 from collections import defaultdict
 from heapq import *
 import matplotlib.animation as animation
+
 from shapely.geometry import Point, Polygon
 import time
-from ExplorePoint import ToExplore
+from ExplorePoint_01 import ToExplore
 
-'''
-##--------------------------------------------------------------------------------------##
-## We are defining Variables here: -
-##--------------------------------------------------------------------------------------##
-'''
+title = 'Click point in map to select initial point.'
 
-start = []
-end = []
-resolution = 0
-radius = 0
-clearance = 0
-
-
-
-title = 'Click to initialize co-ordinates'
 window = tk.Tk()
 
 
+   
+ 
 
-##Now we will assign a default distance to the nodes we have in the frame##
 
+start = []
+end = []
+resolution = 1
+radius = 0
+clearance = 0
+
+# we'll use infinity as a default distance to nodes.
 inf = float('inf')
-
-'''
-##--------------------------------------------------------------------------------------##
-##Functions will be defined here##
-##--------------------------------------------------------------------------------------##
-'''
-
-
-'''
-##To pick the coordinates from the window created in tkinter, we are creating a function 
-##called OnClickFetch which will fetch the x and y coordinates for start and end points
-'''
-
 Border = namedtuple('Border', 'start, end, cost')
 
-def makeborder(start, end, cost=1):
-    return Border(start, end, cost)
-
-def test(algo_type):
-    pass
-
-
-def sorting(vals):
-    print(vals)
-    return vals
-
-
-def getKey(item):
-    return item[0]
-
-
-def OnClick(event):
-    print(event.xdata, event.ydata)
-    global start, end, title
-    
-    if (not (start)):
-        start = [int(event.xdata), int(event.ydata)]
-        print('selected start point co-ordinates are:')
-        print(event.xdata, event.ydata)
-    else:
-        end = [int(event.xdata), int(event.ydata)]
-        print('selected end point co-oridnates are:')
-        print(event.xdata, event.ydata)
-    return True
-
-
-'''
-
-To visualize the map for fetching data, we will create canvas with specifications here:
-we will be giving the list with obstacle specifications here
-
-'''
-
-def create_Initial(ObList):
-    global start, end, title, window
-
-    figure = plt.Figure(figsize = (10,7)) #the figure will be plotted in 10inches by 7inches area on screen
-    mark = figure.add_subplot(111) #the grid for plotting the map on canvas
-    bgcanvas = FigureCanvasTkAgg(figure, window) #to draw the canvas and call matplotlib in tk
-    bgcanvas.get_tk_widget().pack(fill=tk.NONE, expand = False) #fill is on default - so that the actual matplot won't expand even if the canvas is expanded
-
-    #Plot a overall map in cream colour
-    mark.fill([300, 0, 0, 300], [200, 200, 0, 0], color=(1, 0.96, 0.88))
-
-    #logic to fill the obstacles to be created on the map
-    for element in (ObList):
-        mark.fill(element[0], element[1], color = element[2])
-
-    #labelling elements of map    
-    mark.set_title(title);
-    mark.set_xlabel('X axis')
-    mark.set_ylabel('Y axis')
-
-    #To get co-ordinates on click using function: OnClick
-    figure.canvas.mpl_connect('mouseclick_event_in_frame', OnClick)
-
-    # for start point co-ordinates: -    
-    tk.Label(window, text="Enter Coordinates").pack()
-    tk.Label(window, text="Initial point(comma separated x,y-no spaces)").pack()
-
-    
-    Initial_Value = Entry(window)
-    if (start):
-        initial_str = str(start[0]) + ' ' + str(start[1])
-        Initial_Value.insert(0, initial_str)
-    Initial_Value.pack()
-
-     # for end point co-ordinates: -  
-    tk.Label(window, text="Final point(comma separated x,y-no spaces)").pack()
-    Endpoint_Value = Entry(window)
-
-    
-    if (end):
-        final_str = str(end[0]) + ' ' + str(end[1])
-        Endpoint_Value.insert(0, final_str)
-    Endpoint_Value.pack()
-
-    # to initiate the processing to find the shirtest path
-    tk.Button(window, text="Start Processing", command=lambda: process(Initial_Value, Endpoint_Value)).pack()
-
-    window.mainloop()
-    return ObList
 
 
 
-'''
-final animation
-
-'''
-
-
-
-def create_Final(i, nodes, node, test):
-    if (i):
-        if (((nodes[0].x) == i.x) and (nodes[0].y == i.y)):
-            mark.scatter(int(i.x), int(i.y), s=5, c='g')
-        else:
-            mark.scatter(int(i.x), int(i.y), s=5, c='c')
-
-        if (((nodes[len(nodes) - 1].x) == i.x) and (nodes[len(nodes) - 1].y == i.y)):
-            node.PrintPath(mark)
-
-
-            
-
-'''
-
-This function is to exit the map and start the processing with data
-obtained from the user end
-
-'''
-
-
-def process(Initial_Value, Endpoint_Value):
-    global window, start, end, radius, resolution, clearance
-    resolution = 1
-    if (Initial_Value.get()):
-        x, y = (Initial_Value.get()).split(',')
-        start = [int(int(x) / resolution), int(int(y) / resolution)]
-    elif (start):
-
-        start = [int(start[0] / resolution), int(start[1] / resolution)]
-        print('start point', start)
-
-    if (Endpoint_Value.get()):
-        x1, y1 = (Endpoint_Value.get()).split(',')
-        end = [int(int(x1) / resolution), int(int(y1) / resolution)]
-    elif (end):
-        end = [int(end[0] / resolution), int(end[1] / resolution)]
-        print('End point', end)
-    radius = 0
-    clearance = 0
-    window.quit()
-    window.destroy()
-
-
-'''
-
-This function is to create the blueprint for dynamics of the robot direction -
-mathematical equations
-
-Basically, this function will be called by the dijsktra function to simulate the directions and generate pointers for all kind of nodes that we need.
-
-'''
-
-
-
-
-def map_math(weightx, weighty, cost, end, graph, default_listdict,
-             Mod_internal_Allocations, parent, visited_nodes, next_node, pol):
-    flag = 0
-    mmapx = parent.x
-    mmapy = parent.y
+def pathAvailability(x, y, minmax, pol):
+    """
+    Box
+    """
     global radius, clearance, resolution
-
-    min_value_x = min(end[0], start[0]) - 1
-    min_value_y = min(end[1], start[1]) - 1
-    max_value_x = max(end[0], start[0]) + 1
-    max_value_y = max(end[1], start[1]) + 1
-
-
-    for i in range(8):
-
-        x = mmapx + weightx[i]
-        y = mmapy + weighty[i]
-
-        cost_var = cost[i]
-        parent_var = str(mmapx) + ' ' + str(mmapy)
-        node_var = str(x) + ' ' + str(y)
-        con_1= (parent_var, node_var, cost_var)
-        con_2 = (node_var, parent_var, cost_var)
-
-        if ((con_1 not in graph) and (con_2 not in graph) and (
-                x >= 0 and x <= ((300 / resolution) + radius) and y >= 0 and y <= ((200 / resolution) + radius))):
-
-            minmax = [min_value_x, min_value_y, max_value_x, max_value_y]
-            if ((pathAvailability(x, y, minmax, pol) == 1) and (x >= (min_value_x) and y >= (min_value_y)) and (x <= (max_value_x) and y <= (max_value_y))):
-
-                graph.append(con_1)
-                test.append((x, y))
-                if (node_var not in visited_nodes):
-                    visited_nodes.add(node_var)
-
-                    next = (cost_var + parent.cost)
-                    var_to_explore = (ToExplore(node_var, (next), x, y))
-                    var_to_explore.parent = parent
-                    next_node[node_var] = next
-                    Mod_internal_Allocations.append((next, var_to_explore))
-                else:
-                    required = [var for i, var in (Mod_internal_Allocations) if var.node == node_var]
-                    prev = level_a.get(Mod_internal_Allocations, None)
-                    next = (cost_var + parent.cost)
-                    if prev is None or next < prev:
-                        required[0].parent = parent
-                        next_node[Mod_internal_Allocations] = next
-
-                        required[0].cost = next
-            else:
-                min_value_x = minmax[0]
-                min_value_y = minmax[1]
-                max_value_x = minmax[2]
-                max_value_y = minmax[3]
-
-
-
-'''
-
-path availibility
-
-'''
-
-def ObDefined(x, y, minmax, pol):
-    
-    global radius, clearance, resolution
-    
     dnd = radius + clearance
     if (((y - ((76 / resolution) + dnd)) <= 0) and ((x - ((100 / resolution) + dnd)) <= 0) and ((-y + ((30 / resolution) - dnd)) <= 0) and ((-x + ((30 / resolution) - dnd)) <= 0)):
         updateboundaries(x, y, minmax)
@@ -297,11 +70,11 @@ def ObDefined(x, y, minmax, pol):
         return 0
     if ((((math.pow((x - (150 / resolution)), 2) / math.pow(((40 / resolution) + dnd), 2)) + (math.pow((y - (100 / resolution)), 2) / math.pow(((20 / resolution) + dnd), 2)) - 1) <= 0)):
         updateboundaries(x, y, minmax)
-        # print(x,y,'in ellipse')
+        print(x,y,'in ellipse')
         return 0
     if ((((math.pow((x - (225 / resolution)), 2)) + (math.pow((y - (150 / resolution)), 2)) - (math.pow(((25 / resolution) + dnd), 2))) <= 0)):
         updateboundaries(x, y, minmax)
-        # print(x,y,'in circle')
+        print(x,y,'in circle')
         return 0
 
     else:
@@ -309,42 +82,193 @@ def ObDefined(x, y, minmax, pol):
         return 1
 
 
-def dijkstra(graph, initial_str, final_str, paths_to_goal, mmapx, mmapy, weightx, weighty, costw, end, pol):
+def make_edge(start, end, cost=1):
+    return Border(start, end, cost)
+
+
+def test(algo_type):
+    pass
+
+
+def sorting(vals):
+    print(vals)
+    return vals
+
+
+def getKey(item):
+    return item[0]
+
+def dijkstra(graph, Initial, t, paths_to_goal, pmapx, pmapy, c_weight_x, c_weight_y, costw, end, pol):
         path = []
         paths_to_goal = []
 
         count = -1
         path = 0
         queue = []
-        queue.append((mmapx, mmapy))
+        queue.append((pmapx, pmapy))
         default_listdict = defaultdict(list)
 
-        Mod_internal_Allocations, visited_node, next_node = [(0, Node(initial_str, 0, mmapx, mmapy))], set(), {initial_str: 0}
+        Mod_internal_allocation, visited_node, mins = [(0, ToExplore(Initial, 0, pmapx, pmapy))], set(), {Initial: 0}
         nodes = []
 
         count = 0
-        while Mod_internal_Allocations:
-            (cost, parent) = Mod_internal_Allocations.pop(0)
-            nodes.append(parent)
-            map_math(weightx, weighty, cost_var, end, graph, default_listdict,
-             Mod_internal_Allocations, parent, visited_nodes, next_node, pol)
+        while Mod_internal_allocation:
+            (cost, v1) = Mod_internal_allocation.pop(0)
+            nodes.append(v1)
+            direct_to_go(c_weight_x, c_weight_y, costw, end, graph, default_listdict, Mod_internal_allocation, v1, visited_node, mins, pol)
 
-        output_check = [v for v in (nodes) if v.node == finat_str]
+        ans = [v for v in (nodes) if v.node == t]
 
-        if (len(output_check) > 0):
-            return nodes, output_check[0]
+        if (len(ans) > 0):
+            return nodes, ans[0]
         else:
-            return 'Initial/Final Point in Obstacle!!', 0
+            return 'Initial/end Point in Obstacle!!', 0
+
+         
+def onpick(event):
+    print(event.xdata, event.ydata)
+    global start, end, title
+    if (not (start)):
+        print('start')
+        start = [int(event.xdata), int(event.ydata)]
+        title = 'Click point in map to select initial point.'
+    else:
+        print('end')
+        end = [int(event.xdata), int(event.ydata)]
+        title = 'Choose algorithm.'
+        
+    return True
 
 
+def create_initial(listPnts):
+    global title, window, end, start
+    
+    figure = plt.Figure(figsize=(10, 7), dpi=100)
+    mark = figure.add_subplot(111)
+
+    scatter = FigureCanvasTkAgg(figure, window)
+    scatter.get_tk_widget().pack(fill=tk.BOTH, expand = True)
+    
+    mark.fill([300, 0, 0, 300], [200, 200, 0, 0], color=(1, 1, 1))
+
+    for i in (listPnts):
+        mark.fill(i[0], i[1], color=i[2])
+    
+    mark.set_title(title);
+    mark.set_xlabel('X axis')
+    mark.set_ylabel('Y axis')
+
+    figure.canvas.mpl_connect('button_press_event', onpick)
+
+    tk.Label(window, text="Enter Coordinates").pack()
+    tk.Label(window, text="Initial point(comma separated x,y-no spaces)").pack()
+    initial = Entry(window)
+    if (start):
+        init_str = str(start[0]) + ' ' + str(start[1])
+        initial.insert(0, init_str)
+    initial.pack()
+    tk.Label(window, text="end point(comma separated x,y-no spaces)").pack()
+    final1 = Entry(window)
+    if (end):
+        final_str = str(end[0]) + ' ' + str(end[1])
+        final1.insert(0, final_str)
+    final1.pack()
+
+    tk.Button(window, text="Quit", command=lambda: quit(initial, final1)).pack()
+
+    window.mainloop()
+    return listPnts
 
 
+def animated(i, nodes, node, test):
+    if (i):
+        if (((nodes[0].x) == i.x) and (nodes[0].y == i.y)):
+            mark.scatter(int(i.x), int(i.y), s=5, c='r')
+        else:
+            mark.scatter(int(i.x), int(i.y), s=5, c='c')
+
+        if (((nodes[len(nodes) - 1].x) == i.x) and (nodes[len(nodes) - 1].y == i.y)):
+            node.PrintPath(mark)
+        
 
 
-'''
-_________________________________________________________________________________________________________________________________________________________________________________
+def quit(initial, final1):
+    global window, start, end, radius, resolution, clearance
+    resolution = 1
+    if (initial.get()):
+        x, y = (initial.get()).split(',')
+        start = [int(int(x) / resolution), int(int(y) / resolution)]
+    elif (start):
 
-'''
+        start = [int(start[0] / resolution), int(start[1] / resolution)]
+        
+
+    if (final1.get()):
+        x1, y1 = (final1.get()).split(',')
+        end = [int(int(x1) / resolution), int(int(y1) / resolution)]
+    elif (end):
+        end = [int(end[0] / resolution), int(end[1] / resolution)]
+
+    radius = 0
+    clearance = 0
+    window.quit()
+    window.destroy()
+
+
+def direct_to_go(c_weight_x, c_weight_y, cost, end, graph, default_listdict, Mod_internal_allocation, parent, visited_node, mins, pol):
+    flag = 0
+    pmapx = parent.x
+    pmapy = parent.y
+    global radius, clearance, resolution
+
+    minx = min(end[0], start[0]) - 1
+    miny = min(end[1], start[1]) - 1
+    maxx = max(end[0], start[0]) + 1
+    maxy = max(end[1], start[1]) + 1
+
+    for i in range(8):
+
+        x = pmapx + c_weight_x[i]
+        y = pmapy + c_weight_y[i]
+
+        costw = cost[i]
+        a = str(pmapx) + ' ' + str(pmapy)
+        b = str(x) + ' ' + str(y)
+        tup = (a, b, costw)
+        tupin = (b, a, costw)
+
+        if ((tup not in graph) and (tupin not in graph) and (
+                x >= 0 and x <= ((300 / resolution) + radius) and y >= 0 and y <= ((200 / resolution) + radius))):
+
+            minmax = [minx, miny, maxx, maxy]
+            if ((pathAvailability(x, y, minmax, pol) == 1) and (x >= (minx) and y >= (miny)) and (
+                    x <= (maxx) and y <= (maxy))):
+
+                graph.append(tup)
+                test.append((x, y))
+                if (b not in visited_node):
+                    visited_node.add(b)
+
+                    next = (costw + parent.cost)
+                    v2 = (ToExplore(b, (next), x, y))
+                    v2.parent = parent
+                    mins[b] = next
+                    Mod_internal_allocation.append((next, v2))
+                else:
+                    ans = [v for i, v in (Mod_internal_allocation) if v.node == b]
+                    prev = mins.get(b, None)
+                    next = (costw + parent.cost)
+                    if prev is None or next < prev:
+                        ans[0].parent = parent
+                        mins[b] = next
+
+                        ans[0].cost = next
+            else:
+                minx = minmax[0]
+                miny = minmax[1]
+                maxx = minmax[2]
+                maxy = minmax[3]
+
 
 t = np.linspace(0, 2 * np.pi, 100)
 
@@ -399,19 +323,9 @@ for i in range(4):
 
 upolx = []
 upoly = []
-in_x = []
-in_y = []
 for i in range(6):
     upolx.append(px[i] + radius * np.cos(t))
     upoly.append(py[i] + radius * np.sin(t))
-    mmapx = px[i] + radius * np.cos(t)
-    mmapy = py[i] + radius * np.sin(t)
-    for j in mmapx:
-        in_x.append(j)
-    for k in mmapy:
-        in_y.append(j)
-    upolx.append(mmapx)
-    upoly.append(mmapy)
 
     
 ucirx = []
@@ -426,8 +340,8 @@ for i in range(len(r)):
     uelpx.append(r[i] + radius * np.cos(t))
     uelpy.append(s[i] + radius * np.sin(t))
 
-ObList = create_Initial(
-    [[urecx, urecy,'b'], [asx, asy, 'r'], [usqx, usqy, 'b'], [x, y, 'r'], [upolx, upoly, 'b'], [px, py, 'r'], [ucirx, uciry, 'b'], [p, q, 'r'], [uelpx, uelpy, 'b'], [r, s, 'r']])
+listPnts = create_initial(
+    [[urecx, urecy,'k'], [asx, asy, 'r'], [usqx, usqy, 'k'], [x, y, 'r'], [upolx, upoly, 'k'], [px, py, 'r'], [ucirx, uciry, 'k'], [p, q, 'r'], [uelpx, uelpy, 'k'], [r, s, 'r']])
 '''
 __________________________________________________________________________________________________________________________________________________________________________________________
 
@@ -504,15 +418,15 @@ for i in range(len(r)):
     uelpx.append(r[i] + radius * np.cos(t))
     uelpy.append(s[i] + radius * np.sin(t))
 
-mark.fill(usqx, usqy, 'b')
+mark.fill(usqx, usqy, 'k')
 mark.fill(x, y, 'r')
-mark.fill(urecx, urecy, 'b')
+mark.fill(urecx, urecy, 'k')
 mark.fill(x, y, 'r')
-testing = mark.fill(upolx, upoly, 'b')
+testing = mark.fill(upolx, upoly, 'k')
 mark.fill(px, py, 'r')
-mark.fill(ucirx, uciry, 'b')
+mark.fill(ucirx, uciry, 'k')
 mark.fill(p, q, 'r')
-mark.fill(uelpx, uelpy, 'b')
+mark.fill(uelpx, uelpy, 'k')
 mark.fill(r, s, 'r')
 
 
@@ -529,18 +443,14 @@ for i in testing:
     pol.append(polygon_vertices)
 
 obstacles = [[usqx, usqy], [urecx, urecy], [upolx, upoly], [ucirx, uciry], [uelpx, uelpy]]
-weightx = [0, 1, 1, 1, 0, -1, -1, -1]
-weighty = [1, 1, 0, -1, -1, -1, 0, 1]
+c_weight_x = [0, 1, 1, 1, 0, -1, -1, -1]
+c_weight_y = [1, 1, 0, -1, -1, -1, 0, 1]
 cost = [1, np.sqrt(2), 1, np.sqrt(2), 1, np.sqrt(2), 1, np.sqrt(2)]
-
-#_____________________________________________________
-
 
 
 graph = []
-
-mmapx = start[0]
-mmapy = start[1]
+pmapx = start[0]
+pmapy = start[1]
 
 pathx = []
 pathy = []
@@ -549,7 +459,7 @@ paths_to_goal = []
 plt.tick_params(axis='both', which='major', labelsize=9)
 print("Alogorithm in processing")
 
-nodes, node = dijkstra(graph, str(start[0]) + ' ' + str(start[1]), str(end[0]) + ' ' + str(end[1]), paths_to_goal, mmapx, mmapy, weightx, weighty, cost, end, pol)
+nodes, node = dijkstra(graph, str(start[0]) + ' ' + str(start[1]),str(end[0]) + ' ' + str(end[1]), paths_to_goal, pmapx, pmapy, c_weight_x, c_weight_y, cost, end, pol)
 
 if (node == 0):
     test = tk.Tk()
@@ -558,15 +468,15 @@ if (node == 0):
     label.pack()
     test.mainloop()
 else:
-    ObList = [[usqx, usqy, 'b'], [x, y, 'r'],[urecx, urecy, 'b'], [asx, asy, 'r'], [upolx, upoly, 'b'], [px, py, 'r'], [ucirx, uciry, 'b'], [p, q, 'r'], [uelpx, uelpy, 'b'], [r, s, 'r']]
+    listPnts = [[urecx, urecy,'k'], [asx, asy, 'r'],[usqx, usqy, 'k'], [x, y, 'r'], [upolx, upoly, 'k'], [px, py, 'r'], [ucirx, uciry, 'k'], [p, q, 'r'], [uelpx, uelpy, 'k'], [r, s, 'r']]
     test = tk.Tk()
     figure = plt.Figure(figsize=(10, 7), dpi=100)
     mark = figure.add_subplot(111)
-    bgcanvas = FigureCanvasTkAgg(figure, test)
-    bgcanvas.get_tk_widget().pack(fill=tk.NONE, expand = True)
+    scatter = FigureCanvasTkAgg(figure, test)
+    scatter.get_tk_widget().pack(fill=tk.NONE, expand = True)
     
 
-    for i in (ObList):
+    for i in (listPnts):
         mark.fill(i[0], i[1], color=i[2])
 
     
@@ -577,13 +487,6 @@ else:
     mark.set_ylabel('Y axis')
     
 
-    final_visual = animation.FuncAnimation(figure, create_Final, nodes, fargs=(nodes, node, test),interval=10, repeat=False, blit = False)
+    ani = animation.FuncAnimation(figure, animated, nodes, fargs=(nodes, node, test),interval=10, repeat=False, blit = False)
 
     test.mainloop()
-
-
-
-
-
-
-    
