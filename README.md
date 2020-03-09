@@ -6,9 +6,13 @@ The goal of the project is to implement Dijkstra Algorithm for point and rigid r
 
 ## Dependencies 
 python3
-numpy 1.1 
+
+numpy 1.1
+
 Tkinter
+
 Shapely.geometry
+
 
 ## Run Code
 ```
